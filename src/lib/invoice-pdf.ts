@@ -97,17 +97,14 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.setTextColor(20);
   const colQty = L + 250;
   const colPrice = L + 340;
-  const colSub = R;
   doc.text("ITEM DESCRIPTION", L, y - 8);
   doc.text("QTY", colQty, y - 8);
   doc.text("PRICE", colPrice, y - 8);
-  doc.text("SUB TOTAL", colSub, y - 8, { align: "right" });
   y += 24;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
 
   inv.lines.forEach((l) => {
-    const amount = l.rate * l.qty;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(15);
     doc.setFontSize(11);
@@ -122,7 +119,6 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     doc.setFontSize(10);
     doc.text(String(l.qty), colQty, y);
     doc.text(`Rs ${l.rate}`, colPrice, y);
-    doc.text(`Rs ${amount}`, colSub, y, { align: "right" });
     const rowH = 18 + wrapped.length * 11;
     y += rowH + 8;
     doc.setDrawColor(225);
@@ -137,7 +133,6 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
 
   // Totals + terms + QR
   y += 30;
-  const subtotal = inv.lines.reduce((s, l) => s + l.rate * l.qty, 0);
   const totalsX = colPrice;
   const advance = inv.advancePaid || 0;
   const due = Math.max(0, inv.total - advance);
@@ -165,22 +160,19 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(80);
-  doc.text("SUB TOTAL", totalsX, y);
-  doc.setTextColor(15);
-  doc.text(`Rs ${subtotal}`, colSub, y, { align: "right" });
   let ty = y + 22;
   if (inv.discount > 0) {
     doc.setTextColor(80);
     doc.text("DISCOUNT", totalsX, ty);
     doc.setTextColor(15);
-    doc.text(`- Rs ${inv.discount}`, colSub, ty, { align: "right" });
+    doc.text(`- Rs ${inv.discount}`, R, ty, { align: "right" });
     ty += 22;
   }
   if (inv.tax > 0) {
     doc.setTextColor(80);
     doc.text("TAXES", totalsX, ty);
     doc.setTextColor(15);
-    doc.text(`Rs ${inv.tax}`, colSub, ty, { align: "right" });
+    doc.text(`Rs ${inv.tax}`, R, ty, { align: "right" });
     ty += 22;
   }
 
@@ -191,7 +183,7 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.setFontSize(12);
   doc.setTextColor(15);
   doc.text("TOTAL", totalsX, ty);
-  doc.text(`Rs ${inv.total}`, colSub, ty, { align: "right" });
+  doc.text(`Rs ${inv.total}`, R, ty, { align: "right" });
 
   if (advance > 0) {
     ty += 20;
@@ -200,13 +192,13 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     doc.setTextColor(80);
     doc.text("ADVANCE PAID", totalsX, ty);
     doc.setTextColor(15);
-    doc.text(`- Rs ${advance}`, colSub, ty, { align: "right" });
+    doc.text(`- Rs ${advance}`, R, ty, { align: "right" });
     ty += 22;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(180, 40, 40);
     doc.text("BALANCE DUE", totalsX, ty);
-    doc.text(`Rs ${due}`, colSub, ty, { align: "right" });
+    doc.text(`Rs ${due}`, R, ty, { align: "right" });
   }
 
   // Payment + signature block

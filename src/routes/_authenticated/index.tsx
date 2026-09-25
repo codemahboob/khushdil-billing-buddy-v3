@@ -555,7 +555,7 @@ function DetailScreen({
             </div>
             {editing && (
               <div className="mt-3 flex items-center gap-2">
-                <Stepper value={l.qty} onChange={(v) => updateLine(l.id, { qty: Math.max(1, v) })} />
+                <QuantityInput value={l.qty} onChange={(v) => updateLine(l.id, { qty: Math.max(1, v) })} />
                 <button
                   onClick={() => removeLine(l.id)}
                   className="ml-auto text-muted-foreground hover:text-destructive"
@@ -1041,6 +1041,12 @@ function ServicesStep({
 }) {
   const [lines, setLines] = useState<ServiceLine[]>(draft.lines.length ? draft.lines : []);
   const [showCustom, setShowCustom] = useState(false);
+  const [catalogType, setCatalogType] = useState<"service" | "product">("service");
+
+  const visiblePresets = useMemo(
+    () => presets.filter((p) => (p.itemType ?? "service") === catalogType),
+    [presets, catalogType],
+  );
 
   const total = lines.reduce((s, l) => s + l.rate * l.qty, 0);
 
@@ -1088,8 +1094,25 @@ function ServicesStep({
       <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         Quick add
       </div>
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        {(["service", "product"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => {
+              setCatalogType(value);
+              setShowCustom(false);
+            }}
+            className={`rounded-xl px-3 py-2.5 text-sm font-semibold ${
+              catalogType === value ? "bg-primary text-primary-foreground" : "bg-secondary"
+            }`}
+          >
+            {value === "service" ? "Services" : "Products"}
+          </button>
+        ))}
+      </div>
       <div className="grid grid-cols-2 gap-2">
-        {presets.map((s) => (
+        {visiblePresets.map((s) => (
           <button
             key={(s.id || s.name) as string}
             onClick={() => addPreset(s)}
@@ -1106,6 +1129,7 @@ function ServicesStep({
       <div className="mt-3">
         {showCustom ? (
           <CustomServiceForm
+            itemType={catalogType}
             onAdd={(svc) => {
               setLines((c) => [...c, { ...svc, id: crypto.randomUUID() }]);
               setShowCustom(false);
@@ -1137,9 +1161,11 @@ function ServicesStep({
 }
 
 function CustomServiceForm({
+  itemType = "service",
   onAdd,
   onCancel,
 }: {
+  itemType?: "service" | "product";
   onAdd: (s: Omit<ServiceLine, "id">) => void;
   onCancel: () => void;
 }) {
@@ -1153,7 +1179,7 @@ function CustomServiceForm({
     <div className="rounded-2xl bg-card p-4 shadow-soft">
       <input
         autoFocus
-        placeholder="Service name"
+        placeholder={itemType === "service" ? "Service name" : "Product name"}
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="input-base mb-2"
@@ -1175,7 +1201,7 @@ function CustomServiceForm({
       </div>
       <div className="mb-3 flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Quantity</span>
-        <Stepper value={qty} onChange={(v) => setQty(Math.max(1, v))} />
+        <QuantityInput value={qty} onChange={(v) => setQty(Math.max(1, v))} />
       </div>
       <div className="flex gap-2">
         <button
@@ -1341,6 +1367,43 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
+  );
+}
+
+function QuantityInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="inline-flex items-center rounded-full bg-secondary">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, value - 1))}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold text-secondary-foreground hover:bg-accent"
+        aria-label="Decrease quantity"
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min="1"
+        step="1"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => {
+          const next = Number.parseInt(e.target.value, 10);
+          onChange(Number.isFinite(next) && next >= 1 ? next : 1);
+        }}
+        onFocus={(e) => e.currentTarget.select()}
+        className="w-14 bg-transparent text-center text-sm font-bold outline-none"
+        aria-label="Quantity"
+      />
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold text-secondary-foreground hover:bg-accent"
+        aria-label="Increase quantity"
+      >
+        +
+      </button>
+    </div>
   );
 }
 

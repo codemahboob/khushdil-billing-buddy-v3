@@ -109,7 +109,7 @@ export async function updateProfile(patch: Partial<BusinessProfile>): Promise<vo
 export async function fetchCustomServices(): Promise<PresetItem[]> {
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, price, unit, description")
+    .select("id, name, price, unit, description, item_type")
     .eq("is_archived", false)
     .order("created_at");
   if (error) throw error;
@@ -201,7 +201,7 @@ export async function saveInvoice(inv: Invoice): Promise<Invoice> {
 
   // Upsert invoice row
   const { error: invErr } = await supabase.from("invoices").upsert(
-    { event_id: inv.id, user_id: user.id, invoice_number: invoiceNo },
+    { event_id: inv.id, user_id: SHARED_WORKSPACE_ID, invoice_number: invoiceNo },
     { onConflict: "event_id" },
   );
   if (invErr) throw invErr;
