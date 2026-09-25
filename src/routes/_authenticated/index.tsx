@@ -132,6 +132,12 @@ function App() {
                 saving={saving}
                 onBack={() => setView({ name: "services" })}
                 onConfirm={finalize}
+                onLineQty={(id, qty) =>
+                  setDraft((current) => ({
+                    ...current,
+                    lines: current.lines.map((line) => (line.id === id ? { ...line, qty } : line)),
+                  }))
+                }
                 onDiscount={(v) => setDraft({ ...draft, discount: v })}
                 onTax={(v) => setDraft({ ...draft, tax: v })}
                 onAdvance={(v) => setDraft({ ...draft, advancePaid: v })}
@@ -457,8 +463,6 @@ function DetailScreen({
   const total = subtotal - liveDiscount + (liveTax || 0);
   const due = Math.max(0, total - liveAdvance);
 
-  const updateLine = (id: string, patch: Partial<ServiceLine>) =>
-    setDraftLines((cur) => cur.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const removeLine = (id: string) => setDraftLines((cur) => cur.filter((l) => l.id !== id));
   const addPreset = (p: PresetItem) =>
     setDraftLines((cur) => [...cur, { ...p, id: crypto.randomUUID(), qty: 1 }]);
@@ -554,11 +558,10 @@ function DetailScreen({
               <div className="font-bold">Rs {l.qty * l.rate}</div>
             </div>
             {editing && (
-              <div className="mt-3 flex items-center gap-2">
-                <QuantityInput value={l.qty} onChange={(v) => updateLine(l.id, { qty: Math.max(1, v) })} />
+              <div className="mt-3 flex justify-end">
                 <button
                   onClick={() => removeLine(l.id)}
-                  className="ml-auto text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive"
                   aria-label="Remove"
                 >
                   <TrashIcon />
@@ -1040,26 +1043,16 @@ function ServicesStep({
   onNext: (d: Invoice) => void;
 }) {
   const [lines, setLines] = useState<ServiceLine[]>(draft.lines.length ? draft.lines : []);
-  const [showCustom, setShowCustom] = useState(false);
-  const [catalogType, setCatalogType] = useState<"service" | "product">("service");
-
-  const visiblePresets = useMemo(
-    () => presets.filter((p) => (p.itemType ?? "service") === catalogType),
-    [presets, catalogType],
-  );
-
   const total = lines.reduce((s, l) => s + l.rate * l.qty, 0);
 
   const addPreset = (preset: PresetItem) => {
     setLines((cur) => [...cur, { ...preset, id: crypto.randomUUID(), qty: 1 }]);
   };
 
-  const update = (id: string, patch: Partial<ServiceLine>) =>
-    setLines((cur) => cur.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const remove = (id: string) => setLines((cur) => cur.filter((l) => l.id !== id));
 
   return (
-    <StepShell step={2} total={3} title="Services" subtitle="Add what you'll provide." onBack={onBack}>
+    <StepShell step={2} total={3} title="Products & Services" subtitle="Choose what you'll provide." onBack={onBack}>
       {lines.length > 0 && (
         <div className="mb-4 space-y-2">
           {lines.map((l) => (
@@ -1079,12 +1072,8 @@ function ServicesStep({
                   <TrashIcon />
                 </button>
               </div>
-              <div className="mt-3 flex items-center gap-2">
-                <Stepper value={l.qty} onChange={(v) => update(l.id, { qty: Math.max(1, v) })} />
-                <div className="ml-auto text-right text-sm">
-                  <span className="text-muted-foreground">Amount</span>{" "}
-                  <span className="font-bold">Rs {l.rate * l.qty}</span>
-                </div>
+              <div className="mt-3 text-right text-sm text-muted-foreground">
+                Quantity will be entered during Billing.
               </div>
             </div>
           ))}
@@ -1094,25 +1083,8 @@ function ServicesStep({
       <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         Quick add
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        {(["service", "product"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => {
-              setCatalogType(value);
-              setShowCustom(false);
-            }}
-            className={`rounded-xl px-3 py-2.5 text-sm font-semibold ${
-              catalogType === value ? "bg-primary text-primary-foreground" : "bg-secondary"
-            }`}
-          >
-            {value === "service" ? "Services" : "Products"}
-          </button>
-        ))}
-      </div>
       <div className="grid grid-cols-2 gap-2">
-        {visiblePresets.map((s) => (
+        {presets.map((s) => (
           <button
             key={(s.id || s.name) as string}
             onClick={() => addPreset(s)}
@@ -1122,28 +1094,17 @@ function ServicesStep({
             <div className="text-xs text-muted-foreground">
               Rs {s.rate} · {s.unit}
             </div>
+            {s.itemType && (
+              <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                {s.itemType}
+              </div>
+            )}
           </button>
         ))}
       </div>
 
-      <div className="mt-3">
-        {showCustom ? (
-          <CustomServiceForm
-            itemType={catalogType}
-            onAdd={(svc) => {
-              setLines((c) => [...c, { ...svc, id: crypto.randomUUID() }]);
-              setShowCustom(false);
-            }}
-            onCancel={() => setShowCustom(false)}
-          />
-        ) : (
-          <button
-            onClick={() => setShowCustom(true)}
-            className="w-full rounded-2xl border-2 border-dashed border-primary/60 p-3 text-sm font-semibold text-primary transition hover:bg-primary/5"
-          >
-            + Add one-off service
-          </button>
-        )}
+      <div className="mt-3 rounded-2xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+        Add or manage products and services from the <span className="font-semibold text-foreground">Products &amp; Services</span> menu.
       </div>
 
       <div className="mt-6 flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
@@ -1239,11 +1200,13 @@ function ReviewStep({
   saving: boolean;
   onBack: () => void;
   onConfirm: () => void;
+  onLineQty: (id: string, qty: number) => void;
   onDiscount: (v: number) => void;
   onTax: (v: number) => void;
   onAdvance: (v: number) => void;
 }) {
-  const subtotal = draft.lines.reduce((s, l) => s + l.rate * l.qty, 0);
+  const [lines, setLines] = useState<ServiceLine[]>(draft.lines);
+  const subtotal = lines.reduce((s, l) => s + l.rate * l.qty, 0);
   const total = subtotal - draft.discount + (draft.tax || 0);
   const advance = draft.advancePaid ?? 0;
   const due = Math.max(0, total - advance);
@@ -1276,15 +1239,28 @@ function ReviewStep({
         <div className="my-4 h-px bg-border" />
 
         <div className="space-y-3">
-          {draft.lines.map((l) => (
-            <div key={l.id} className="flex items-baseline justify-between gap-3 text-sm">
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{l.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {l.qty} × Rs {l.rate} {l.unit !== "fixed" ? `(${l.unit})` : ""}
+          {lines.map((l) => (
+            <div key={l.id} className="rounded-xl bg-secondary/60 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{l.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Rs {l.rate} {l.unit !== "fixed" ? `· ${l.unit}` : "· fixed"}
+                  </div>
                 </div>
+                <div className="font-semibold">Rs {l.qty * l.rate}</div>
               </div>
-              <div className="font-semibold">Rs {l.qty * l.rate}</div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantity</span>
+                <QuantityInput
+                  value={l.qty}
+                  onChange={(v) => {
+                    const qty = Math.max(1, v);
+                    setLines((current) => current.map((line) => (line.id === l.id ? { ...line, qty } : line)));
+                    onLineQty(l.id, qty);
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>

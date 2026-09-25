@@ -17,23 +17,33 @@ function CatalogPage() {
   const [price, setPrice] = useState("");
   const [unit, setUnit] = useState("fixed");
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const custom = presets.filter((p) => !!p.id);
   const services = useMemo(() => custom.filter((p) => (p.itemType ?? "service") === "service"), [custom]);
   const products = useMemo(() => custom.filter((p) => p.itemType === "product"), [custom]);
 
   const add = async () => {
+    const cleanName = name.trim();
     const numericPrice = Number(price);
-    if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice < 0) return;
+    if (!cleanName || !Number.isFinite(numericPrice) || numericPrice < 0) {
+      setError("Enter a name and a valid price.");
+      setMessage(null);
+      return;
+    }
     setBusy(true);
+    setError(null);
+    setMessage(null);
     try {
-      await addCustomService({ name: name.trim(), rate: numericPrice, unit, itemType: type });
+      await addCustomService({ name: cleanName, rate: numericPrice, unit, itemType: type });
       setName("");
       setPrice("");
       setUnit("fixed");
       await refresh();
+      setMessage(`${type === "service" ? "Service" : "Product"} added successfully.`);
     } catch (e) {
-      alert("Could not save item: " + (e instanceof Error ? e.message : String(e)));
+      setError("Could not save item: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -85,6 +95,8 @@ function CatalogPage() {
           <button disabled={busy || !name.trim() || price === ""} onClick={add} className="mt-3 w-full rounded-full bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-40">
             {busy ? "Saving…" : `Add ${type === "service" ? "service" : "product"}`}
           </button>
+          {error && <p className="mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{error}</p>}
+          {message && <p className="mt-2 rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">{message}</p>}
         </div>
 
         <CatalogSection title="Services" items={[...BUILTIN_SERVICES, ...services]} onDelete={remove} />
