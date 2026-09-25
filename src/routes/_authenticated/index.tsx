@@ -1191,6 +1191,7 @@ function ReviewStep({
   saving,
   onBack,
   onConfirm,
+  onLineQty,
   onDiscount,
   onTax,
   onAdvance,
