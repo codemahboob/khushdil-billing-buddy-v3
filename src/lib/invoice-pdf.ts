@@ -27,14 +27,11 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
-  const L = 42;
-  const R = W - 42;
+  const L = 40;
+  const R = W - 40;
+  const CENTER = W / 2;
 
-  const issued = new Date(inv.createdAt).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const GST = "20EOPPA1394G1Z6";
 
   const eventDate = new Date(inv.eventDate).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -42,57 +39,17 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     year: "numeric",
   });
 
-  // ------------------------------------------------------------
+  // ============================================================
   // HEADER
-  // ------------------------------------------------------------
+  // ============================================================
 
-  doc.setTextColor(15);
+  doc.setTextColor(20);
 
+  // BILL TO
+  // This replaces the old invoice-generation date position.
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text(issued, L, 58);
-
-  doc.text("Invoice No", L + 125, 58);
-  doc.text(
-    formatInvoiceNo(inv.invoiceNo, b.prefix).replace("#", ""),
-    L + 125,
-    72,
-  );
-
-  const brandLines = b.name.split(" & ");
-
-  let brandY = 58;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(27);
-
-  brandLines.forEach((line) => {
-    doc.text(line, R, brandY, { align: "right" });
-    brandY += 27;
-  });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(90);
-
-  doc.text(
-    `Proprietor — ${b.proprietor}`,
-    R,
-    brandY - 3,
-    { align: "right" },
-  );
-
-  // ------------------------------------------------------------
-  // CUSTOMER
-  // ------------------------------------------------------------
-
-  const customerY = 155;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(100);
-
-  doc.text("Invoice to :", R, customerY, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Bill To:", L, 48);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -100,59 +57,157 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
 
   doc.text(
     (inv.customerName || "Customer").toUpperCase(),
-    R,
-    customerY + 17,
-    { align: "right" },
+    L,
+    64,
   );
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(70);
+  doc.setFontSize(8);
+  doc.setTextColor(75);
 
-  let infoY = customerY + 31;
+  let billY = 78;
 
   if (inv.address) {
-    doc.text(inv.address, R, infoY, { align: "right" });
-    infoY += 12;
+    const addressLines = doc.splitTextToSize(inv.address, 190);
+    doc.text(addressLines.slice(0, 2), L, billY);
+    billY += Math.min(addressLines.length, 2) * 11;
   }
 
   if (inv.phone) {
-    doc.text(`Phone: ${inv.phone}`, R, infoY, { align: "right" });
-    infoY += 12;
+    doc.text(`Phone: ${inv.phone}`, L, billY);
+    billY += 11;
   }
 
-  doc.text(`Event: ${eventDate}`, R, infoY, { align: "right" });
+  // Keep EVENT DATE.
+  // Invoice generation date is completely removed.
+  doc.text(`Event Date: ${eventDate}`, L, billY);
 
-  // ------------------------------------------------------------
+  // ============================================================
+  // CENTERED INVOICE NUMBER
+  // ============================================================
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(85);
+
+  doc.text(
+    "INVOICE NO",
+    CENTER,
+    40,
+    { align: "center" },
+  );
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(20);
+
+  doc.text(
+    formatInvoiceNo(inv.invoiceNo, b.prefix).replace("#", ""),
+    CENTER,
+    56,
+    { align: "center" },
+  );
+
+  // ============================================================
+  // BUSINESS HEADER
+  // ============================================================
+
+  // Smaller single-line business name.
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.setTextColor(20);
+
+  doc.text(
+    "Khushdil Tent & DJ",
+    R,
+    43,
+    { align: "right" },
+  );
+
+  // GST directly below business name.
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(75);
+
+  doc.text(
+    `GST - ${GST}`,
+    R,
+    57,
+    { align: "right" },
+  );
+
+  // Keep proprietor only here.
+  doc.setFontSize(7.5);
+  doc.setTextColor(85);
+
+  doc.text(
+    `Proprietor — ${b.proprietor}`,
+    R,
+    70,
+    { align: "right" },
+  );
+
+  // ============================================================
   // ITEMS TABLE
-  // ------------------------------------------------------------
+  // ============================================================
 
   const itemCount = inv.lines.length;
 
-  // Compact automatically according to number of products.
-  const rowHeight =
-    itemCount <= 12 ? 22 :
-    itemCount <= 16 ? 20 :
+  // Protected bottom area.
+  // This prevents table/totals from entering the footer.
+  const footerTop = H - 132;
+
+  // Space reserved for totals.
+  const totalsReserve = 105;
+
+  const tableBottomLimit =
+    footerTop - totalsReserve;
+
+  const headerY = 175;
+  const firstRowY = headerY + 20;
+
+  const availableRowsHeight =
+    tableBottomLimit - firstRowY - 8;
+
+  // Automatically compact the rows when there are many items.
+  const preferredRowHeight =
+    itemCount <= 12 ? 23 :
+    itemCount <= 16 ? 21 :
     itemCount <= 20 ? 18 :
     itemCount <= 25 ? 16 :
-    14;
+    itemCount <= 30 ? 14 :
+    13;
+
+  const rowHeight = Math.max(
+    13,
+    Math.min(
+      preferredRowHeight,
+      availableRowsHeight / Math.max(itemCount, 1),
+    ),
+  );
 
   const fontSize =
     itemCount <= 16 ? 8.5 :
     itemCount <= 22 ? 7.8 :
     7;
 
-  const headerY = 245;
-
-  // Columns
+  // Fixed columns.
   const colQty = L + 285;
-  const colPrice = L + 355;
-  const colSubtotal = L + 435;
+  const colPrice = L + 350;
+  const colSubtotal = L + 430;
 
+  // Table top border.
   doc.setDrawColor(45);
   doc.setLineWidth(0.7);
-  doc.line(L, headerY, R, headerY);
 
+  doc.line(
+    L,
+    headerY,
+    R,
+    headerY,
+  );
+
+  // Table headings.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(20);
@@ -162,219 +217,365 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.text("PRICE", colPrice, headerY - 7);
   doc.text("SUBTOTAL", colSubtotal, headerY - 7);
 
-  let y = headerY + 19;
+  let y = firstRowY;
 
-  // Calculate actual subtotal from lines.
   const calculatedSubtotal = inv.lines.reduce(
-    (sum, line) => sum + Number(line.qty || 0) * Number(line.rate || 0),
+    (sum, line) =>
+      sum +
+      Number(line.qty || 0) *
+      Number(line.rate || 0),
     0,
   );
+
+  // ============================================================
+  // PRODUCT ROWS
+  // ============================================================
 
   inv.lines.forEach((line) => {
     let itemName = line.name || "";
 
-    // Keep every item on one line.
+    // Keep item names on one line.
     const maxChars =
-      itemCount > 22 ? 30 :
-      itemCount > 16 ? 36 :
-      42;
+      itemCount > 25 ? 30 :
+      itemCount > 16 ? 37 :
+      43;
 
     if (itemName.length > maxChars) {
-      itemName = itemName.slice(0, maxChars - 1) + "…";
+      itemName =
+        itemName.slice(0, maxChars - 1) + "…";
     }
 
+    // Item
     doc.setFont("helvetica", "bold");
     doc.setFontSize(fontSize);
     doc.setTextColor(20);
 
-    doc.text(itemName, L, y);
+    doc.text(
+      itemName,
+      L,
+      y,
+    );
 
+    // Quantity
     doc.setFont("helvetica", "normal");
     doc.setTextColor(30);
 
-    doc.text(String(line.qty), colQty, y);
-    doc.text(`Rs ${line.rate}`, colPrice, y);
     doc.text(
-      `Rs ${Number(line.qty || 0) * Number(line.rate || 0)}`,
+      String(line.qty),
+      colQty,
+      y,
+    );
+
+    // Price
+    doc.text(
+      `Rs ${line.rate}`,
+      colPrice,
+      y,
+    );
+
+    // Subtotal
+    const lineSubtotal =
+      Number(line.qty || 0) *
+      Number(line.rate || 0);
+
+    doc.text(
+      `Rs ${lineSubtotal}`,
       colSubtotal,
       y,
     );
 
-    doc.setDrawColor(225);
-    doc.setLineWidth(0.3);
-    doc.line(L, y + rowHeight - 7, R, y + rowHeight - 7);
+    // ==========================================================
+    // EVEN FULL-WIDTH SEPARATOR
+    // ==========================================================
+    // Every product gets exactly the same L-to-R line.
+    // The line position is calculated only from rowHeight,
+    // never from the item-name length.
+
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.35);
+
+    doc.line(
+      L,
+      y + rowHeight - 7,
+      R,
+      y + rowHeight - 7,
+    );
 
     y += rowHeight;
   });
 
-  doc.setDrawColor(45);
-  doc.setLineWidth(0.7);
-  doc.line(L, y - 7, R, y - 7);
-
-  // ------------------------------------------------------------
+  // ============================================================
   // TOTALS
-  // ------------------------------------------------------------
-
-  const totalsY = y + 22;
+  // ============================================================
 
   const discount = Number(inv.discount || 0);
   const tax = Number(inv.tax || 0);
   const advance = Number(inv.advancePaid || 0);
 
-  const total = Number(inv.total || calculatedSubtotal);
-  const due = Math.max(0, total - advance);
+  const total =
+    Number(inv.total || calculatedSubtotal);
+
+  const due =
+    Math.max(0, total - advance);
+
+  let ty = y + 20;
+
+  // Safety clamp so totals never enter footer.
+  const maxTotalsY = footerTop - 80;
+
+  if (ty > maxTotalsY) {
+    ty = maxTotalsY;
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(80);
 
-  let ty = totalsY;
+  // SUBTOTAL
+  doc.text(
+    "SUBTOTAL",
+    colPrice,
+    ty,
+  );
 
-  doc.text("SUBTOTAL", colPrice, ty);
   doc.setTextColor(20);
-  doc.text(`Rs ${calculatedSubtotal}`, R, ty, { align: "right" });
-
-  ty += 15;
-
-  if (discount > 0) {
-    doc.setTextColor(80);
-    doc.text("DISCOUNT", colPrice, ty);
-
-    doc.setTextColor(20);
-    doc.text(`- Rs ${discount}`, R, ty, { align: "right" });
-
-    ty += 15;
-  }
-
-  if (tax > 0) {
-    doc.setTextColor(80);
-    doc.text("TAX", colPrice, ty);
-
-    doc.setTextColor(20);
-    doc.text(`Rs ${tax}`, R, ty, { align: "right" });
-
-    ty += 15;
-  }
-
-  doc.setDrawColor(200);
-  doc.line(colPrice - 8, ty + 3, R, ty + 3);
-
-  ty += 18;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(15);
-
-  doc.text("TOTAL", colPrice, ty);
-  doc.text(`Rs ${total}`, R, ty, { align: "right" });
-
-  if (advance > 0) {
-    ty += 16;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(80);
-
-    doc.text("ADVANCE PAID", colPrice, ty);
-
-    doc.setTextColor(20);
-    doc.text(`- Rs ${advance}`, R, ty, { align: "right" });
-
-    ty += 16;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-
-    doc.text("BALANCE DUE", colPrice, ty);
-    doc.text(`Rs ${due}`, R, ty, { align: "right" });
-  }
-
-  // ------------------------------------------------------------
-  // TERMS / CONTACT
-  // ------------------------------------------------------------
-
-  const bottomBlockY = H - 125;
-
-  doc.setDrawColor(225);
-  doc.setLineWidth(0.4);
-  doc.line(L, bottomBlockY, R, bottomBlockY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(20);
-
-  doc.text("Terms & Conditions", L, bottomBlockY + 18);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(90);
-
-  const terms = doc.splitTextToSize(b.terms || "", 260);
-
-  doc.text(terms.slice(0, 3), L, bottomBlockY + 31);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(20);
-
-  doc.text("Contact", L, bottomBlockY + 72);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(90);
-
-  doc.text(b.phones.join(" / "), L, bottomBlockY + 85);
-
-  // ------------------------------------------------------------
-  // SIGNATURE
-  // ------------------------------------------------------------
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(110);
 
   doc.text(
-    "Authorised signature",
+    `Rs ${calculatedSubtotal}`,
     R,
-    bottomBlockY + 70,
+    ty,
     { align: "right" },
   );
 
-  doc.setDrawColor(120);
+  ty += 14;
+
+  // DISCOUNT
+  if (discount > 0) {
+    doc.setTextColor(80);
+
+    doc.text(
+      "DISCOUNT",
+      colPrice,
+      ty,
+    );
+
+    doc.setTextColor(20);
+
+    doc.text(
+      `- Rs ${discount}`,
+      R,
+      ty,
+      { align: "right" },
+    );
+
+    ty += 14;
+  }
+
+  // TAX
+  if (tax > 0) {
+    doc.setTextColor(80);
+
+    doc.text(
+      "TAX",
+      colPrice,
+      ty,
+    );
+
+    doc.setTextColor(20);
+
+    doc.text(
+      `Rs ${tax}`,
+      R,
+      ty,
+      { align: "right" },
+    );
+
+    ty += 14;
+  }
+
+  // Divider before total.
+  doc.setDrawColor(190);
+  doc.setLineWidth(0.45);
+
   doc.line(
-    R - 120,
-    bottomBlockY + 60,
+    colPrice - 8,
+    ty + 3,
     R,
-    bottomBlockY + 60,
+    ty + 3,
   );
 
-  // ------------------------------------------------------------
-  // FOOTER
-  // ------------------------------------------------------------
+  ty += 17;
 
-  const footerY = H - 38;
+  // TOTAL
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(15);
+
+  doc.text(
+    "TOTAL",
+    colPrice,
+    ty,
+  );
+
+  doc.text(
+    `Rs ${total}`,
+    R,
+    ty,
+    { align: "right" },
+  );
+
+  ty += 15;
+
+  // ADVANCE PAID
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(80);
+
+  doc.text(
+    "ADVANCE PAID",
+    colPrice,
+    ty,
+  );
+
+  doc.setTextColor(20);
+
+  doc.text(
+    `- Rs ${advance}`,
+    R,
+    ty,
+    { align: "right" },
+  );
+
+  ty += 15;
+
+  // BALANCE DUE
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(20);
+
+  doc.text(
+    "BALANCE DUE",
+    colPrice,
+    ty,
+  );
+
+  doc.text(
+    `Rs ${due}`,
+    R,
+    ty,
+    { align: "right" },
+  );
+
+  // ============================================================
+  // LOWER INFORMATION AREA
+  // ============================================================
+
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.4);
+
+  doc.line(
+    L,
+    footerTop,
+    R,
+    footerTop,
+  );
+
+  // TERMS
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(20);
+
+  doc.text(
+    "Terms & Conditions",
+    L,
+    footerTop + 16,
+  );
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(90);
+
+  const terms = doc.splitTextToSize(
+    b.terms || "Booking confirmed",
+    220,
+  );
+
+  doc.text(
+    terms.slice(0, 2),
+    L,
+    footerTop + 29,
+  );
+
+  // CONTACT
+  const contactX = L + 235;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(20);
 
-  doc.text(b.name, L, footerY);
+  doc.text(
+    "Contact",
+    contactX,
+    footerTop + 16,
+  );
 
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(90);
+
+  doc.text(
+    b.phones.join(" / "),
+    contactX,
+    footerTop + 29,
+  );
+
+  // SIGNATURE
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(100);
 
   doc.text(
-    `P. ${b.phones.join(", ")} | ${b.address}`,
-    L,
-    footerY + 11,
+    "Authorised signature",
+    R,
+    footerTop + 20,
+    { align: "right" },
   );
 
-  doc.text(
-    `Proprietor: ${b.proprietor}`,
+  doc.setDrawColor(120);
+  doc.setLineWidth(0.4);
+
+  doc.line(
+    R - 105,
+    footerTop + 31,
     R,
-    footerY + 11,
-    { align: "right" },
+    footerTop + 31,
+  );
+
+  // ============================================================
+  // FOOTER
+  // ============================================================
+
+  // No duplicate proprietor here.
+  const footerY = H - 39;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(20);
+
+  doc.text(
+    "Khushdil Tent & DJ",
+    L,
+    footerY,
+  );
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100);
+
+  doc.text(
+    `GST - ${GST} | P. ${b.phones.join(", ")} | ${b.address}`,
+    L,
+    footerY + 10,
   );
 
   return doc;
