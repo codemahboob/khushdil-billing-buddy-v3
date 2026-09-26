@@ -123,13 +123,13 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
 
   const itemCount = inv.lines.length;
 
-  const headerY = 190;
+  const headerY = 170;
   const firstRowY = headerY + 19;
 
-  const footerTop = H - 125;
+  const footerTop = H - 115;
 
   // Reserve space for totals before the footer block.
-  const totalsReserve = 105;
+  const totalsReserve = 95;
 
   const availableRowsHeight =
     Math.max(80, footerTop - totalsReserve - firstRowY);
@@ -143,7 +143,7 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     14;
 
   const rowHeight = Math.max(
-    8,
+    9,
     Math.min(
       idealRowHeight,
       availableRowsHeight / Math.max(itemCount, 1),
@@ -151,10 +151,10 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   );
 
   const fontSize =
-    itemCount <= 16 ? 8.5 :
-    itemCount <= 22 ? 7.8 :
-    itemCount <= 32 ? 7 :
-    6.2;
+    itemCount <= 16 ? 9.5 :
+    itemCount <= 22 ? 9 :
+    itemCount <= 32 ? 8.5 :
+    8.2;
 
   // Columns.
   const colQty = L + 285;
