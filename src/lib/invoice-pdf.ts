@@ -159,7 +159,7 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   const headerY = 180;
   const firstRowY = headerY + 19;
 
-  const footerTop = H - 88;
+  const footerTop = H - 60;
 
   // Reserve space for totals before the footer block.
   const totalsReserve = 95;
@@ -207,6 +207,10 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.text("PRICE", colPrice, headerY - 7);
   doc.text("SUBTOTAL", colSubtotal, headerY - 7);
 
+  // Every item separator uses the exact same width and thickness.
+  doc.setDrawColor(220);
+  doc.setLineWidth(0.35);
+
   let y = firstRowY;
 
   const calculatedSubtotal = inv.lines.reduce(
@@ -249,14 +253,17 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
       y,
     );
 
-    // EXACT SAME separator for every product.
-    doc.setDrawColor(220);
-    doc.setLineWidth(0.35);
+    // EXACT SAME separator for every item.
+    const separatorY =
+      firstRowY +
+      (inv.lines.indexOf(line) + 1) * rowHeight -
+      6;
+
     doc.line(
       L,
-      y + rowHeight - 6,
+      separatorY,
       R,
-      y + rowHeight - 6,
+      separatorY,
     );
 
     y += rowHeight;
@@ -431,32 +438,6 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     footerTop + 31,
     R,
     footerTop + 31,
-  );
-
-  // ------------------------------------------------------------
-  // FOOTER
-  // ------------------------------------------------------------
-
-  const footerY = H - 38;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(20);
-
-  doc.text(
-    b.name || "Khushdil Tent & DJ",
-    L,
-    footerY,
-  );
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.7);
-  doc.setTextColor(100);
-
-  doc.text(
-    `GST - ${GST} | P. ${b.phones.join(", ")} | ${b.address}`,
-    L,
-    footerY + 10,
   );
 
   return doc;
