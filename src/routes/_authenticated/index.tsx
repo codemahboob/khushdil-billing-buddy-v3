@@ -1072,8 +1072,19 @@ function ServicesStep({
                   <TrashIcon />
                 </button>
               </div>
-              <div className="mt-3 text-right text-sm text-muted-foreground">
-                Quantity will be entered during Billing.
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Quantity
+                </span>
+                <QuantityInput
+                  value={l.qty}
+                  onChange={(v) => {
+                    const qty = Math.max(1, v);
+                    setLines((current) =>
+                      current.map((line) => (line.id === l.id ? { ...line, qty } : line))
+                    );
+                  }}
+                />
               </div>
             </div>
           ))}
@@ -1251,16 +1262,8 @@ function ReviewStep({
                 </div>
                 <div className="font-semibold">Rs {l.qty * l.rate}</div>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantity</span>
-                <QuantityInput
-                  value={l.qty}
-                  onChange={(v) => {
-                    const qty = Math.max(1, v);
-                    setLines((current) => current.map((line) => (line.id === l.id ? { ...line, qty } : line)));
-                    onLineQty(l.id, qty);
-                  }}
-                />
+              <div className="mt-2 text-right text-xs font-semibold text-muted-foreground">
+                Quantity: {l.qty}
               </div>
             </div>
           ))}
