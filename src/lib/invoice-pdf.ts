@@ -123,10 +123,10 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
 
   const itemCount = inv.lines.length;
 
-  const headerY = 170;
+  const headerY = 180;
   const firstRowY = headerY + 19;
 
-  const footerTop = H - 115;
+  const footerTop = H - 88;
 
   // Reserve space for totals before the footer block.
   const totalsReserve = 95;
@@ -136,14 +136,14 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
 
   // Automatically compress rows so every item remains on ONE A4 page.
   const idealRowHeight =
-    itemCount <= 12 ? 22 :
-    itemCount <= 16 ? 20 :
-    itemCount <= 20 ? 18 :
-    itemCount <= 25 ? 16 :
-    14;
+    itemCount <= 12 ? 24 :
+    itemCount <= 16 ? 22 :
+    itemCount <= 20 ? 20 :
+    itemCount <= 25 ? 18 :
+    16;
 
   const rowHeight = Math.max(
-    9,
+    11,
     Math.min(
       idealRowHeight,
       availableRowsHeight / Math.max(itemCount, 1),
@@ -221,9 +221,9 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     doc.setLineWidth(0.35);
     doc.line(
       L,
-      y + rowHeight - 5,
+      y + rowHeight - 6,
       R,
-      y + rowHeight - 5,
+      y + rowHeight - 6,
     );
 
     y += rowHeight;
@@ -387,7 +387,6 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.setTextColor(20);
 
   doc.text(
-    "Contact",
     contactX,
     footerTop + 16,
   );
