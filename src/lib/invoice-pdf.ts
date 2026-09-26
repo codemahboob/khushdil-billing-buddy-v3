@@ -117,6 +117,39 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
     { align: "right" },
   );
 
+  // BUSINESS ADDRESS + CONTACT — upper-right.
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(75);
+
+  let businessInfoY = 82;
+
+  if (b.address) {
+    const businessAddressLines = doc.splitTextToSize(
+      b.address,
+      190,
+    );
+
+    doc.text(
+      businessAddressLines.slice(0, 2),
+      R,
+      businessInfoY,
+      { align: "right" },
+    );
+
+    businessInfoY +=
+      Math.min(businessAddressLines.length, 2) * 9;
+  }
+
+  if (b.phones.length) {
+    doc.text(
+      `Phone: ${b.phones.join(" / ")}`,
+      R,
+      businessInfoY,
+      { align: "right" },
+    );
+  }
+
   // ------------------------------------------------------------
   // ITEMS TABLE
   // ------------------------------------------------------------
@@ -348,7 +381,7 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   );
 
   // ------------------------------------------------------------
-  // TERMS / CONTACT / SIGNATURE
+  // TERMS / SIGNATURE
   // ------------------------------------------------------------
 
   doc.setDrawColor(225);
@@ -377,27 +410,6 @@ function buildInvoiceDoc(inv: Invoice, profile: ProfileLike) {
   doc.text(
     terms.slice(0, 2),
     L,
-    footerTop + 29,
-  );
-
-  const contactX = L + 235;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(20);
-
-  doc.text(
-    contactX,
-    footerTop + 16,
-  );
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(90);
-
-  doc.text(
-    b.phones.join(" / "),
-    contactX,
     footerTop + 29,
   );
 
